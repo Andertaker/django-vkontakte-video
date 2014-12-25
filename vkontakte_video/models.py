@@ -107,8 +107,12 @@ class Album(OwnerableModelMixin, VkontaktePKModel):
         return self.title
 
     @property
+    def slug(self):
+        return 'videos%s?section=album_%s' % (self.owner_remote_id, self.remote_id)
+
+    @property
     def link(self):
-        return 'https://vk.com/videos%s?section=album_%s' % (self.owner_remote_id, self.remote_id)
+        return self.get_url()
 
     def parse(self, response):
         super(Album, self).parse(response)
@@ -154,6 +158,14 @@ class Video(OwnerableModelMixin, VkontaktePKModel):
         return Comment.objects.filter(object_id=self.pk,
                                       object_content_type=ContentType.objects.get_for_model(self._meta.model))
 
+    @property
+    def slug(self):
+        return 'video%s_%s' % (self.owner_remote_id, self.remote_id)
+
+    @property
+    def link(self):
+        return self.get_url()
+
     class Meta:
         get_latest_by = 'remote_id'
         verbose_name = u'Видеозапись Вконтакте'
@@ -161,10 +173,6 @@ class Video(OwnerableModelMixin, VkontaktePKModel):
 
     def __str__(self):
         return self.title
-
-    @property
-    def link(self):
-        return 'https://vk.com/video%s_%s' % (self.owner_remote_id, self.remote_id)
 
     def parse(self, response):
         super(Video, self).parse(response)

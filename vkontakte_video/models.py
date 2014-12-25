@@ -7,24 +7,12 @@ from django.utils.encoding import python_2_unicode_compatible
 import logging
 import re
 
-from vkontakte_api.decorators import fetch_all
-from vkontakte_api.mixins import CountOffsetManagerMixin, AfterBeforeManagerMixin, OwnerableModelMixin
-from vkontakte_api.models import VkontakteManager, VkontakteTimelineManager, \
-    VkontakteModel, VkontaktePKModel, VkontakteCRUDModel
-from vkontakte_groups.models import Group
-from vkontakte_comments.models import Comment
+from vkontakte_api.mixins import CountOffsetManagerMixin, AfterBeforeManagerMixin, OwnerableModelMixin, LikableModelMixin
+from vkontakte_api.models import VkontaktePKModel
 
-from vkontakte_users.models import User
-#import signals
+from vkontakte_comments.mixins import CommentableModelMixin
+from vkontakte_comments.models import Comment
 log = logging.getLogger('vkontakte_video')
-'''
-ALBUM_PRIVACY_CHOCIES = (
-    (0, u'Все пользователи'),
-    (1, u'Только друзья'),
-    (2, u'Друзья и друзья друзей'),
-    (3, u'Только я')
-)
-'''
 
 
 class AlbumRemoteManager(CountOffsetManagerMixin):
@@ -39,11 +27,7 @@ class AlbumRemoteManager(CountOffsetManagerMixin):
         if not owner:
             raise ValueError("You must specify owner, which albums you want to fetch")
 
-        if owner._meta.model_name == 'user':
-            kwargs['owner_id'] = owner.remote_id
-        else:
-            kwargs['owner_id'] = -1 * owner.remote_id
-
+        kwargs['owner_id'] = self.model.get_owner_remote_id(owner)
         kwargs['extended'] = 1
 
         return super(AlbumRemoteManager, self).fetch(**kwargs)
@@ -52,15 +36,12 @@ class AlbumRemoteManager(CountOffsetManagerMixin):
 class VideoRemoteManager(CountOffsetManagerMixin, AfterBeforeManagerMixin):
 
     @transaction.commit_on_success
-    def fetch(self, album=None, owner=None, ids=None, **kwargs):
+    def fetch(self, album=None, owner=None, ids=None, extended=1, **kwargs):
         if not (album or owner):
             raise ValueError("You must specify or video album or owner, which video you want to fetch")
 
         if owner:
-            if owner._meta.model_name == 'user':
-                kwargs['owner_id'] = owner.remote_id
-            else:
-                kwargs['owner_id'] = -1 * owner.remote_id
+            kwargs['owner_id'] = self.model.get_owner_remote_id(owner)
 
         if album:
             kwargs['owner_id'] = album.owner_remote_id
@@ -76,16 +57,13 @@ class VideoRemoteManager(CountOffsetManagerMixin, AfterBeforeManagerMixin):
 
             kwargs['videos'] = ','.join(videos)
 
-        kwargs['extended'] = 1
+        kwargs['extended'] = extended
 
         return super(VideoRemoteManager, self).fetch(**kwargs)
 
 
 @python_2_unicode_compatible
 class Album(OwnerableModelMixin, VkontaktePKModel):
-
-    methods_namespace = 'video'
-    #slug_prefix = 'album'
 
     photo_160 = models.URLField(max_length=255, default='')
 
@@ -94,7 +72,7 @@ class Album(OwnerableModelMixin, VkontaktePKModel):
     title = models.CharField(max_length='200')
 
     objects = models.Manager()
-    remote = AlbumRemoteManager(remote_pk=('remote_id',), version=5.27, methods={
+    remote = AlbumRemoteManager(remote_pk=('remote_id',), version=5.27, methods_namespace='video', methods={
         'get': 'getAlbums',
     })
 
@@ -115,8 +93,8 @@ class Album(OwnerableModelMixin, VkontaktePKModel):
         return self.get_url()
 
     def parse(self, response):
+        response['videos_count'] = response.pop('count')
         super(Album, self).parse(response)
-        self.videos_count = response['count']
 
     @transaction.commit_on_success
     def fetch_videos(self, *args, **kwargs):
@@ -124,21 +102,18 @@ class Album(OwnerableModelMixin, VkontaktePKModel):
 
 
 @python_2_unicode_compatible
-class Video(OwnerableModelMixin, VkontaktePKModel):
+class Video(OwnerableModelMixin, LikableModelMixin, CommentableModelMixin, VkontaktePKModel):
 
-    methods_namespace = 'video'
+    comments_remote_related_name = 'video_id'
+    likes_remote_type = 'video'
 
     album = models.ForeignKey(Album, null=True, related_name='videos')
-
-    like_users = models.ManyToManyField(User, related_name='like_videos')
 
     title = models.CharField(max_length=255)
     description = models.TextField()
 
     duration = models.PositiveIntegerField(u'Продолжительность')
 
-    likes_count = models.PositiveIntegerField(u'Лайков', default=0)
-    comments_count = models.PositiveIntegerField(u'Кол-во комментариев', default=0)
     views_count = models.PositiveIntegerField(u'Кол-во просмотров', default=0)
 
     link = models.URLField(max_length=255)
@@ -148,7 +123,7 @@ class Video(OwnerableModelMixin, VkontaktePKModel):
     date = models.DateTimeField(help_text=u'Дата создания', db_index=True)
 
     objects = models.Manager()
-    remote = VideoRemoteManager(remote_pk=('remote_id',), version=5.27, methods={
+    remote = VideoRemoteManager(remote_pk=('remote_id',), version=5.27, methods_namespace='video', methods={
         'get': 'get',
     })
 
@@ -174,30 +149,12 @@ class Video(OwnerableModelMixin, VkontaktePKModel):
     def __str__(self):
         return self.title
 
+    @property
+    def slug(self):
+        return 'video%s_%s' % (self.owner_remote_id, self.remote_id)
+
     def parse(self, response):
         super(Video, self).parse(response)
         self.comments_count = response['comments']
         self.views_count = response['views']
         self.album_id = response.get('album_id', None)
-
-    @transaction.commit_on_success
-    def fetch_comments(self, *args, **kwargs):
-        return Comment.remote.fetch_by_object(object=self, *args, **kwargs)
-
-    #@transaction.commit_on_success
-    def fetch_likes(self, *args, **kwargs):
-
-#        kwargs['offset'] = int(kwargs.pop('offset', 0))
-        kwargs['likes_type'] = 'video'
-        kwargs['item_id'] = self.remote_id
-        kwargs['owner_id'] = self.owner_remote_id
-
-        log.debug('Fetching likes of %s %s of owner "%s"' % (self._meta.module_name, self.remote_id, self.owner))
-
-        users = User.remote.fetch_instance_likes(self, *args, **kwargs)
-
-        # update self.likes
-        self.likes_count = self.like_users.count()
-        self.save()
-
-        return users

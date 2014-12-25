@@ -128,12 +128,6 @@ class Video(OwnerableModelMixin, LikableModelMixin, CommentableModelMixin, Vkont
     })
 
     @property
-    def comments(self):
-        # TODO: set this attr by related_name
-        return Comment.objects.filter(object_id=self.pk,
-                                      object_content_type=ContentType.objects.get_for_model(self._meta.model))
-
-    @property
     def slug(self):
         return 'video%s_%s' % (self.owner_remote_id, self.remote_id)
 

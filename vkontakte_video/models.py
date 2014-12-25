@@ -63,7 +63,7 @@ class VideoRemoteManager(CountOffsetManagerMixin, AfterBeforeManagerMixin):
                 kwargs['owner_id'] = -1 * owner.remote_id
 
         if album:
-            kwargs['owner_id'] = album.remote_owner_id
+            kwargs['owner_id'] = album.owner_remote_id
             kwargs['album_id'] = album.remote_id
             #kwargs['extra_fields'] = {'album_id': album.pk}
 
@@ -108,7 +108,7 @@ class Album(OwnerableModelMixin, VkontaktePKModel):
 
     @property
     def link(self):
-        return 'https://vk.com/videos%s?section=album_%s' % (self.remote_owner_id, self.remote_id)
+        return 'https://vk.com/videos%s?section=album_%s' % (self.owner_remote_id, self.remote_id)
 
     def parse(self, response):
         super(Album, self).parse(response)
@@ -164,7 +164,7 @@ class Video(OwnerableModelMixin, VkontaktePKModel):
 
     @property
     def link(self):
-        return 'https://vk.com/video%s_%s' % (self.remote_owner_id, self.remote_id)
+        return 'https://vk.com/video%s_%s' % (self.owner_remote_id, self.remote_id)
 
     def parse(self, response):
         super(Video, self).parse(response)
@@ -182,7 +182,7 @@ class Video(OwnerableModelMixin, VkontaktePKModel):
 #        kwargs['offset'] = int(kwargs.pop('offset', 0))
         kwargs['likes_type'] = 'video'
         kwargs['item_id'] = self.remote_id
-        kwargs['owner_id'] = self.remote_owner_id
+        kwargs['owner_id'] = self.owner_remote_id
 
         log.debug('Fetching likes of %s %s of owner "%s"' % (self._meta.module_name, self.remote_id, self.owner))
 

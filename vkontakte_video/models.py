@@ -11,7 +11,6 @@ from vkontakte_api.mixins import CountOffsetManagerMixin, AfterBeforeManagerMixi
 from vkontakte_api.models import VkontaktePKModel
 
 from vkontakte_comments.mixins import CommentableModelMixin
-from vkontakte_comments.models import Comment
 log = logging.getLogger('vkontakte_video')
 
 
@@ -88,10 +87,6 @@ class Album(OwnerableModelMixin, VkontaktePKModel):
     def slug(self):
         return 'videos%s?section=album_%s' % (self.owner_remote_id, self.remote_id)
 
-    @property
-    def link(self):
-        return self.get_url()
-
     def parse(self, response):
         response['videos_count'] = response.pop('count')
         super(Album, self).parse(response)
@@ -130,10 +125,6 @@ class Video(OwnerableModelMixin, LikableModelMixin, CommentableModelMixin, Vkont
     @property
     def slug(self):
         return 'video%s_%s' % (self.owner_remote_id, self.remote_id)
-
-    @property
-    def link(self):
-        return self.get_url()
 
     class Meta:
         get_latest_by = 'remote_id'

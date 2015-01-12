@@ -111,7 +111,6 @@ class Video(OwnerableModelMixin, LikableModelMixin, CommentableModelMixin, Vkont
 
     views_count = models.PositiveIntegerField(u'Кол-во просмотров', default=0)
 
-    link = models.URLField(max_length=255)
     photo_130 = models.URLField(max_length=255)
     player = models.URLField(max_length=255)
 

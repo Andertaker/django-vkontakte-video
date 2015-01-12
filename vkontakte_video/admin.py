@@ -22,7 +22,7 @@ class VideoInline(admin.TabularInline):
 class AlbumAdmin(VkontakteModelAdmin):
 
     def image_preview(self, obj):
-        return u'<a href="%s"><img src="%s" height="30" /></a>' % (obj.link, obj.photo_160)
+        return u'<a href="%s"><img src="%s" height="30" /></a>' % (obj.get_url(), obj.photo_160)
     image_preview.short_description = u'Картинка'
     image_preview.allow_tags = True
 
@@ -35,7 +35,7 @@ class AlbumAdmin(VkontakteModelAdmin):
 class VideoAdmin(VkontakteModelAdmin):
 
     def image_preview(self, obj):
-        return u'<a href="%s"><img src="%s" height="30" /></a>' % (obj.link, obj.photo_130)
+        return u'<a href="%s"><img src="%s" height="30" /></a>' % (obj.get_url(), obj.photo_130)
     image_preview.short_description = u'Картинка'
     image_preview.allow_tags = True
 

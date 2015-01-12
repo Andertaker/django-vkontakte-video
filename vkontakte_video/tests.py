@@ -1,16 +1,15 @@
 # -*- coding: utf-8 -*-
-import json
-
 from django.test import TestCase
 from django.utils import timezone
-from factories import AlbumFactory, VideoFactory
+import json
+
 import mock
+from vkontakte_groups.factories import GroupFactory
+
+from factories import AlbumFactory, VideoFactory
 from models import Album, Video
 from vkontakte_comments.models import Comment
-from vkontakte_groups.factories import GroupFactory
 from vkontakte_users.factories import UserFactory, User
-
-
 GROUP_ID = 16297716  # https://vk.com/cocacola
 ALBUM_ID = 50850761  # 9 videos
 VIDEO_ID = 166742757  # 12 comments
@@ -92,7 +91,7 @@ class VideoTest(TestCase):
         self.assertEqual(Video.objects.count(), len(videos))
         self.assertEqual(videos[0].owner, owner)
         self.assertEqual(videos[0].album, album)
-        #self.assertTrue(videos[0].likes_count > 0)
+        self.assertTrue(videos[0].likes_count > 0)
         self.assertTrue(videos[0].comments_count > 0)
 
         # testing `after` parameter
@@ -192,6 +191,7 @@ class VideoTest(TestCase):
         self.assertEqual(instance.player, d['player'])
         self.assertEqual(instance.views_count, d['views'])
         self.assertEqual(instance.comments_count, d['comments'])
+        self.assertEqual(instance.likes_count, d['likes']['count'])
         self.assertEqual(instance.duration, d['duration'])
 
         self.assertIsNotNone(instance.date)

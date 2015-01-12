@@ -178,7 +178,7 @@ class VideoTest(TestCase):
         d = json.loads(response)
 
         instance = Video()
-        instance.parse(d)
+        instance.parse(d.copy())
         instance.save()
 
         self.assertEqual(instance.album, album)

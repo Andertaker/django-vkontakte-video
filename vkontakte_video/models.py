@@ -139,4 +139,5 @@ class Video(OwnerableModelMixin, LikableModelMixin, CommentableModelMixin, Vkont
 
     def parse(self, response):
         response['views_count'] = response.pop('views')
+        self.album_id = response.pop('album_id', None)
         super(Video, self).parse(response)
